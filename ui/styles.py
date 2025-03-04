@@ -15,3 +15,4 @@ ICON_SUCCESS = "✓"  # 成功アイコン
 ICON_ERROR = "✗"  # エラーアイコン
 ICON_WARNING = "!"  # 警告アイコン
 ICON_PENDING = "•"  # 未実行アイコン
+ICON_RUNNING = "▶"  # 実行中アイコン

@@ -1,11 +1,13 @@
 import os
 import threading
+import time
 from ui.test_case_frame import TestCaseFrame
 from ui.widgets import create_scrolledtext
 import tkinter as tk
 from tkinter import ttk
 from core.tester import run_python_test, compare_outputs
 from ui.styles import ICON_WARNING
+import concurrent.futures
 
 
 class TestRunner:
@@ -105,12 +107,48 @@ class TestRunner:
         threading.Thread(target=self._run_all_tests_thread).start()
 
     def _run_all_tests_thread(self):
-        """別スレッドですべてのテストを実行"""
-        all_passed = True
+        """並列ですべてのテストを実行"""
+        # まず全てのテストの出力をクリア
         for i in range(len(self.test_cases)):
-            passed = self._run_test(i)
-            if not passed:
-                all_passed = False
+            test_case = self.test_cases[i]
+
+            # UIスレッドで安全に更新
+            def clear_output(index):
+                test_case = self.test_cases[index]
+                actual_output_widget = test_case["actual_output_widget"]
+                actual_output_widget.config(state="normal")
+                actual_output_widget.delete("1.0", tk.END)
+                # クリア後にdisabledにしない - これが出力が表示されない原因
+                test_case["result_frame"].set_running()
+
+            self.app_controller.root.after(0, lambda idx=i: clear_output(idx))
+
+        # UIが更新される時間を少し待つ
+        time.sleep(0.1)
+
+        # 並列処理のためのスレッドプール
+        all_passed = True
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(4, len(self.test_cases))
+        ) as executor:
+            # テスト実行をスレッドプールに投入
+            future_to_test = {
+                executor.submit(self._run_test, i): i
+                for i in range(len(self.test_cases))
+            }
+
+            # 完了したテストの結果を処理
+            for future in concurrent.futures.as_completed(future_to_test):
+                test_index = future_to_test[future]
+                try:
+                    passed = future.result()
+                    if not passed:
+                        all_passed = False
+                except Exception as e:
+                    print(
+                        f"テスト {test_index} の実行中にエラーが発生しました: {str(e)}"
+                    )
+                    all_passed = False
 
         # 結果を表示
         if all_passed:
@@ -148,6 +186,7 @@ class TestRunner:
             # UIスレッドで安全に更新
             def update_ui():
                 # 出力結果を表示
+                actual_output_widget.config(state="normal")  # 編集可能に
                 actual_output_widget.delete("1.0", tk.END)
                 actual_output_widget.insert(tk.END, result["output"])
 
@@ -163,17 +202,24 @@ class TestRunner:
                         tk.END, f"\n\n--- エラー出力 ---\n{result['error']}"
                     )
 
+                # 状態を読み取り専用に戻す必要がある場合はここでセット
+                # actual_output_widget.config(state="disabled")
+
             # UIスレッドで更新
             self.app_controller.root.after(0, update_ui)
 
             # 大文字小文字を区別せずに比較
             passed = compare_outputs(result["output"], expected_output)
 
+            # 処理が完了するまで少し待機して、UIの更新が反映されるようにする
+            time.sleep(0.1)
+
             return passed
 
         except Exception as e:
             # エラーメッセージを表示
             def show_error():
+                test_case["actual_output_widget"].config(state="normal")
                 test_case["actual_output_widget"].delete("1.0", tk.END)
                 test_case["actual_output_widget"].insert(
                     tk.END, f"エラーが発生しました: {str(e)}"
@@ -184,6 +230,7 @@ class TestRunner:
                 test_case["result_frame"].result_label.config(
                     text="エラー", style="Error.TLabel"
                 )
+                # test_case["actual_output_widget"].config(state="disabled")
 
             self.app_controller.root.after(0, show_error)
             return False

@@ -20,6 +20,9 @@ class ThemeManager:
         self.style.configure("Dark.TFrame", background=COLOR_BG_DARK)
         self.style.configure("Medium.TFrame", background=COLOR_BG_MEDIUM)
         self.style.configure("Light.TFrame", background=COLOR_BG_LIGHT)
+        self.style.configure(
+            "Highlight.TFrame", background=COLOR_PRIMARY, borderwidth=2
+        )
 
         # TLabelframe設定
         self.style.configure(
@@ -60,6 +63,9 @@ class ThemeManager:
             background=COLOR_BG_MEDIUM,
             foreground=COLOR_WARNING,
             font=("Arial", 10, "bold"),
+        )
+        self.style.configure(
+            "Running.TLabel", background=COLOR_BG_MEDIUM, foreground=COLOR_WARNING
         )
 
         # TButton設定

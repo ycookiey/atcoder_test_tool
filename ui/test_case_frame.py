@@ -1,6 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
-from ui.styles import COLOR_BG_MEDIUM, ICON_PENDING, ICON_SUCCESS, ICON_ERROR
+from ui.styles import (
+    COLOR_BG_MEDIUM,
+    ICON_PENDING,
+    ICON_SUCCESS,
+    ICON_ERROR,
+    ICON_RUNNING,
+)
 
 
 class TestCaseFrame(ttk.Frame):
@@ -35,8 +41,16 @@ class TestCaseFrame(ttk.Frame):
         self.content_frame = ttk.Frame(self, style="Light.TFrame")
         self.content_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
+    def set_running(self):
+        """テスト実行中の状態を設定"""
+        self.result_icon.config(text=ICON_RUNNING, style="Running.TLabel")
+        self.result_label.config(text="実行中", style="Running.TLabel")
+        # フレームをハイライト
+        self.configure(style="Highlight.TFrame")
+
     def set_result(self, passed=None):
         """テスト結果を設定"""
+        self.configure(style="Medium.TFrame")
         if passed is None:
             self.result_icon.config(text=ICON_PENDING, style="Status.TLabel")
             self.result_label.config(text="未実行", style="Status.TLabel")
