@@ -133,6 +133,14 @@ class MainWindow:
         button_frame = ttk.Frame(left_frame, style="Medium.TFrame")
         button_frame.pack(fill=tk.X, padx=5, pady=5)
 
+        vscode_btn = ttk.Button(
+            button_frame,
+            text="VSCodeで開く",
+            command=lambda: self.app_controller.code_manager.open_in_vscode(),
+            style="Primary.TButton",
+        )
+        vscode_btn.pack(side=tk.LEFT, padx=5)
+
         run_all_btn = ttk.Button(
             button_frame,
             text="全テストケース実行",

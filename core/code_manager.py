@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk
+import subprocess
 
 
 class CodeManager:
@@ -120,4 +121,22 @@ A = [LI() for _ in range(N)]
         except Exception as e:
             self.app_controller.ui.show_status_message(
                 f"ファイルの生成に失敗しました: {str(e)}", "Error.TLabel"
+            )
+
+    def open_in_vscode(self):
+        """コードファイルをVSCodeで開く"""
+        if not self.code_file or not os.path.exists(self.code_file):
+            self.app_controller.ui.show_status_message(
+                "開くファイルがありません", "Warning.TLabel"
+            )
+            return
+
+        try:
+            subprocess.Popen(["code", self.code_file], shell=True)
+            self.app_controller.ui.show_status_message(
+                f"VSCodeでファイルを開きました: {self.code_file}", "Success.TLabel"
+            )
+        except Exception as e:
+            self.app_controller.ui.show_status_message(
+                f"VSCodeでの開始に失敗しました: {str(e)}", "Error.TLabel"
             )
