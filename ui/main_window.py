@@ -24,6 +24,10 @@ class MainWindow:
         self.notebook.select(0)
         self.enable_testcase_tab(False)
 
+        # 問題タブ管理の初期化
+        self.problem_tabs = {}  # 問題ID -> タブIDのマッピング
+        self.tab_test_frames = {}  # タブID -> テストフレームのマッピング
+
         # メニューバーの設定
         menubar = tk.Menu(root)
         editmenu = tk.Menu(menubar, tearoff=0)
@@ -229,6 +233,237 @@ class MainWindow:
             ),
         )
         self.test_canvas.bind("<Configure>", on_canvas_configure)
+
+    def create_problem_tab(self, problem_id, problem_title, contest_number, test_cases):
+        """問題ごとのタブを作成"""
+        # 既に同じ問題のタブが存在する場合は選択して終了
+        if problem_id in self.problem_tabs:
+            tab_id = self.problem_tabs[problem_id]
+            self.notebook.select(tab_id)
+            return
+
+        # タブタイトル
+        tab_title = f"{problem_id}: {problem_title}"
+
+        # 新しいタブを作成
+        problem_tab = ttk.Frame(self.notebook, style="Medium.TFrame")
+        self.notebook.add(problem_tab, text=tab_title)
+
+        # タブインデックスを保存
+        tab_index = self.notebook.index(problem_tab)
+        self.problem_tabs[problem_id] = tab_index
+
+        # テスト画面の分割（水平方向）
+        test_split = ttk.PanedWindow(problem_tab, orient=tk.HORIZONTAL)
+        test_split.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # 左側のコードエリア
+        left_frame = ttk.Frame(test_split, style="Medium.TFrame")
+        test_split.add(left_frame, weight=1)
+
+        # コードファイル名の設定
+        code_file = self.app_controller.code_manager.update_code_file_path(
+            contest_number, problem_id
+        )
+
+        # コードフレーム
+        code_frame = ttk.LabelFrame(
+            left_frame, text=code_file if code_file else "コード未選択"
+        )
+        code_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # コードテキスト
+        code_text = create_scrolledtext(code_frame, height=5, width=30, readonly=True)
+        code_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # ボタンフレーム
+        button_frame = ttk.Frame(left_frame, style="Medium.TFrame")
+        button_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        # VSCodeで開くボタン
+        vscode_btn = ttk.Button(
+            button_frame,
+            text="VSCodeで開く",
+            command=lambda: self.app_controller.code_manager.open_in_vscode(),
+            style="Primary.TButton",
+        )
+        vscode_btn.pack(side=tk.LEFT, padx=5)
+
+        # コピーボタン
+        copy_btn = ttk.Button(
+            button_frame,
+            text="コピー",
+            command=lambda: self.app_controller.code_manager.copy_without_comments(),
+            style="Primary.TButton",
+        )
+        copy_btn.pack(side=tk.LEFT, padx=5)
+
+        # このタブのテストケースのみ実行するボタン
+        run_btn = ttk.Button(
+            button_frame,
+            text="テスト実行",
+            command=lambda pid=problem_id: self.app_controller.run_tests_for_problem(
+                pid
+            ),
+            style="Primary.TButton",
+        )
+        run_btn.pack(side=tk.LEFT, padx=5)
+
+        # 右側のテストケースエリア
+        right_frame = ttk.Frame(test_split, style="Medium.TFrame")
+        test_split.add(right_frame, weight=3)
+
+        # テストケースコンテナのスクロール機能
+        test_canvas = tk.Canvas(right_frame, bg=COLOR_BG_MEDIUM, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(
+            right_frame, orient="vertical", command=test_canvas.yview
+        )
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        test_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        test_canvas.configure(yscrollcommand=scrollbar.set)
+
+        # テストケースを格納するフレーム
+        test_container = ttk.Frame(test_canvas, style="Medium.TFrame")
+        window_id = test_canvas.create_window(
+            (0, 0),
+            window=test_container,
+            anchor="nw",
+            width=test_canvas.winfo_reqwidth(),
+        )
+
+        def on_canvas_configure(event):
+            canvas_width = event.width
+            test_canvas.itemconfig(window_id, width=canvas_width)
+            test_canvas.configure(scrollregion=test_canvas.bbox("all"))
+
+        test_container.bind(
+            "<Configure>",
+            lambda e: test_canvas.configure(scrollregion=test_canvas.bbox("all")),
+        )
+        test_canvas.bind("<Configure>", on_canvas_configure)
+
+        # タブ情報を保存
+        self.tab_test_frames[tab_index] = {
+            "code_frame": code_frame,
+            "code_text": code_text,
+            "test_container": test_container,
+            "problem_id": problem_id,
+            "test_cases": [],
+        }
+
+        # テストケースを表示
+        self.update_problem_tab_test_cases(problem_id, test_cases)
+
+        # 新しいタブを選択
+        self.notebook.select(tab_index)
+
+        return tab_index
+
+    def update_problem_tab_test_cases(self, problem_id, test_cases):
+        """問題タブのテストケースを更新"""
+        if problem_id not in self.problem_tabs:
+            return False
+
+        tab_index = self.problem_tabs[problem_id]
+        if tab_index not in self.tab_test_frames:
+            return False
+
+        tab_info = self.tab_test_frames[tab_index]
+        test_container = tab_info["test_container"]
+
+        # テストケースコンテナをクリア
+        for widget in test_container.winfo_children():
+            widget.destroy()
+
+        # テストケースを表示
+        from ui.test_case_frame import TestCaseFrame
+
+        tab_test_cases = []
+        for i, test_case in enumerate(test_cases):
+            # フレームを作成
+            test_frame = TestCaseFrame(
+                test_container,
+                f"テストケース {i+1}",
+            )
+            test_frame.pack(fill=tk.X, expand=True, padx=5, pady=5)
+
+            # コンテンツ部分（3列レイアウト）
+            content_frame = test_frame.content_frame
+
+            # 入力例（左）
+            input_frame = ttk.Frame(content_frame, style="Light.TFrame")
+            input_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+            ttk.Label(input_frame, text=test_case["input_title"], style="TLabel").pack(
+                anchor=tk.W, padx=5, pady=2
+            )
+            input_text = create_scrolledtext(input_frame, height=6, width=30)
+            input_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+            input_text.insert(tk.END, test_case["input"])
+
+            # 期待される出力（中央）
+            expected_frame = ttk.Frame(content_frame, style="Light.TFrame")
+            expected_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+            ttk.Label(
+                expected_frame, text=test_case["output_title"], style="TLabel"
+            ).pack(anchor=tk.W, padx=5, pady=2)
+            expected_text = create_scrolledtext(expected_frame, height=6, width=30)
+            expected_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+            expected_text.insert(tk.END, test_case["expected_output"])
+
+            # 実際の出力（右）
+            actual_frame = ttk.Frame(content_frame, style="Light.TFrame")
+            actual_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+            ttk.Label(actual_frame, text="実際の出力", style="TLabel").pack(
+                anchor=tk.W, padx=5, pady=2
+            )
+            actual_text = create_scrolledtext(actual_frame, height=6, width=30)
+            actual_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+            # テストケース情報を保存
+            case_info = {
+                "input_title": test_case["input_title"],
+                "input": test_case["input"],
+                "output_title": test_case["output_title"],
+                "expected_output": test_case["expected_output"],
+                "input_widget": input_text,
+                "output_widget": expected_text,
+                "actual_output_widget": actual_text,
+                "result_frame": test_frame,
+            }
+            tab_test_cases.append(case_info)
+
+        # タブのテストケース情報を更新
+        self.tab_test_frames[tab_index]["test_cases"] = tab_test_cases
+
+        return True
+
+    def get_current_tab_info(self):
+        """現在選択されているタブの情報を取得"""
+        current_tab = self.notebook.index("current")
+
+        # HTML入力タブかテストケースタブの場合
+        if current_tab < 2:
+            return None
+
+        # 問題タブの場合
+        if current_tab in self.tab_test_frames:
+            return self.tab_test_frames[current_tab]
+
+        return None
+
+    def get_problem_tab_info(self, problem_id):
+        """指定された問題IDのタブ情報を取得"""
+        if problem_id not in self.problem_tabs:
+            return None
+
+        tab_index = self.problem_tabs[problem_id]
+        if tab_index not in self.tab_test_frames:
+            return None
+
+        return self.tab_test_frames[tab_index]
 
     def show_loading(self, show=True):
         """解析中のローディング表示を切り替え"""

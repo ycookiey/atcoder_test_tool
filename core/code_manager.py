@@ -63,6 +63,67 @@ class CodeManager:
             self.app_controller.file_monitor.update_file_path(self.code_file)
             self.reload_code_file()
 
+        # 現在のタブが問題タブの場合、そのタブのコード表示も更新
+        current_tab = self.app_controller.ui.notebook.index("current")
+        if current_tab >= 2:  # HTML入力とテストケース以外のタブ
+            tab_info = self.app_controller.ui.get_current_tab_info()
+            if tab_info and "code_text" in tab_info:
+                # 問題タブのコードフレームも更新
+                self.update_problem_tab_code(tab_info, title)
+
+    def update_problem_tab_code(self, tab_info, title=None):
+        """問題タブのコード表示を更新"""
+        if not tab_info or "code_frame" not in tab_info or "code_text" not in tab_info:
+            return
+
+        code_frame = tab_info["code_frame"]
+        code_text = tab_info["code_text"]
+
+        # タイトルが指定されていれば更新
+        if title:
+            code_frame.configure(text=title)
+
+        # ファイルが存在しない場合、生成ボタンを表示
+        if self.code_file and not os.path.exists(self.code_file):
+            # 既存のウィジェットをクリア
+            for widget in code_frame.winfo_children():
+                if widget != code_text:
+                    widget.destroy()
+
+            file_gen_frame = ttk.Frame(code_frame, style="Medium.TFrame")
+            file_gen_frame.pack(fill=tk.X, pady=5, padx=5)
+
+            message_label = ttk.Label(
+                file_gen_frame,
+                text=f"ファイル {self.code_file} が見つかりません",
+                style="Warning.TLabel",
+            )
+            message_label.pack(side=tk.LEFT, padx=(0, 10))
+
+            gen_button = ttk.Button(
+                file_gen_frame,
+                text="ファイルを生成",
+                command=self.generate_file,
+                style="Primary.TButton",
+            )
+            gen_button.pack(side=tk.RIGHT)
+
+        # コードを表示
+        if os.path.exists(self.code_file):
+            try:
+                with open(self.code_file, "r", encoding="utf-8") as f:
+                    code = f.read()
+
+                code_text.config(state="normal")
+                code_text.delete("1.0", tk.END)
+                code_text.insert(tk.END, code)
+                code_text.config(state="disabled")
+            except Exception as e:
+                code_text.config(state="normal")
+                code_text.delete("1.0", tk.END)
+                code_text.insert(tk.END, f"ファイルの読み込みに失敗: {str(e)}")
+                code_text.config(state="disabled")
+
     def reload_code_file(self):
         """コードファイルを再読み込みして表示を更新"""
         try:
@@ -72,6 +133,15 @@ class CodeManager:
 
                 # UIスレッドでの更新
                 self.app_controller.root.after(0, lambda: self.update_code_text(code))
+
+                # 現在のタブもチェックして更新
+                current_tab = self.app_controller.ui.notebook.index("current")
+                if current_tab >= 2:  # 問題タブの場合
+                    tab_info = self.app_controller.ui.get_current_tab_info()
+                    if tab_info:
+                        self.app_controller.root.after(
+                            0, lambda: self.update_problem_tab_code(tab_info)
+                        )
         except Exception as e:
             print(f"ファイルの再読み込みに失敗: {str(e)}")
 
@@ -122,6 +192,13 @@ A = [LI() for _ in range(N)]
 
             # ファイル生成後、自動的にVSCodeで開く
             self.open_in_vscode()
+
+            # 現在のタブもチェックして更新
+            current_tab = self.app_controller.ui.notebook.index("current")
+            if current_tab >= 2:  # 問題タブの場合
+                tab_info = self.app_controller.ui.get_current_tab_info()
+                if tab_info:
+                    self.update_problem_tab_code(tab_info, frame_title)
 
         except Exception as e:
             self.app_controller.ui.show_status_message(

@@ -55,8 +55,16 @@ class HTMLManager:
                     f"{len(problem_info['test_cases'])}個のテストケースを解析しました",
                     "Success.TLabel",
                 )
-                # テストケースタブに切り替え
-                self.app_controller.ui.notebook.select(1)
+
+                # 問題タブに切り替え（もし作成されていれば）
+                if problem_info["problem_id"] in self.app_controller.ui.problem_tabs:
+                    tab_id = self.app_controller.ui.problem_tabs[
+                        problem_info["problem_id"]
+                    ]
+                    self.app_controller.ui.notebook.select(tab_id)
+                # そうでなければテストケースタブに切り替え（従来の挙動）
+                else:
+                    self.app_controller.ui.notebook.select(1)
         else:
             self.app_controller.ui.show_status_message(
                 f"HTMLの解析に失敗しました: {error_message}", "Error.TLabel"

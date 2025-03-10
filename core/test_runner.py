@@ -160,6 +160,79 @@ class TestRunner:
                 "テストに不合格があります", "Error.TLabel"
             )
 
+    def run_tests_for_tab(self, tab_info):
+        """指定されたタブのテストケースを実行"""
+        if not tab_info or "test_cases" not in tab_info or not tab_info["test_cases"]:
+            self.app_controller.ui.show_status_message(
+                "テストケースがありません", "Warning.TLabel"
+            )
+            return
+
+        code_file = self.app_controller.code_manager.code_file
+        if not code_file or not os.path.exists(code_file):
+            self.app_controller.ui.show_status_message(
+                "Pythonファイルが存在しません", "Warning.TLabel"
+            )
+            return
+
+        # 別スレッドで実行してUIをブロックしないようにする
+        threading.Thread(target=lambda: self._run_tab_tests_thread(tab_info)).start()
+
+    def _run_tab_tests_thread(self, tab_info):
+        """並列で指定されたタブのテストを実行"""
+        test_cases = tab_info["test_cases"]
+
+        # まず全てのテストの出力をクリア
+        for i in range(len(test_cases)):
+            test_case = test_cases[i]
+
+            # UIスレッドで安全に更新
+            def clear_output(test_case):
+                actual_output_widget = test_case["actual_output_widget"]
+                actual_output_widget.config(state="normal")
+                actual_output_widget.delete("1.0", tk.END)
+                # クリア後にdisabledにしない
+                test_case["result_frame"].set_running()
+
+            self.app_controller.root.after(0, lambda tc=test_case: clear_output(tc))
+
+        # UIが更新される時間を少し待つ
+        time.sleep(0.1)
+
+        # 並列処理のためのスレッドプール
+        all_passed = True
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(4, len(test_cases))
+        ) as executor:
+            # テスト実行をスレッドプールに投入
+            future_to_test = {
+                executor.submit(self._run_tab_test, test_case): i
+                for i, test_case in enumerate(test_cases)
+            }
+
+            # 完了したテストの結果を処理
+            for future in concurrent.futures.as_completed(future_to_test):
+                test_index = future_to_test[future]
+                try:
+                    passed = future.result()
+                    if not passed:
+                        all_passed = False
+                except Exception as e:
+                    print(
+                        f"タブテスト {test_index} の実行中にエラーが発生しました: {str(e)}"
+                    )
+                    all_passed = False
+
+        # 結果を表示
+        if all_passed:
+            self.app_controller.ui.show_status_message(
+                "すべてのテストに合格しました！", "Success.TLabel"
+            )
+        else:
+            self.app_controller.ui.show_status_message(
+                "テストに不合格があります", "Error.TLabel"
+            )
+
     def _run_test(self, test_index):
         """指定されたインデックスのテストケースを実行"""
         code_file = self.app_controller.code_manager.code_file
@@ -231,6 +304,72 @@ class TestRunner:
                     text="エラー", style="Error.TLabel"
                 )
                 # test_case["actual_output_widget"].config(state="disabled")
+
+            self.app_controller.root.after(0, show_error)
+            return False
+
+    def _run_tab_test(self, test_case):
+        """タブのテストケースを実行"""
+        code_file = self.app_controller.code_manager.code_file
+        if not code_file or not os.path.exists(code_file):
+            return False
+
+        # 入力と期待される出力を取得（ウィジェットから最新の値を取得）
+        input_data = test_case["input_widget"].get("1.0", tk.END).strip()
+        expected_output = test_case["output_widget"].get("1.0", tk.END).strip()
+
+        try:
+            # テスト実行
+            result = run_python_test(code_file, input_data)
+
+            # 実際の出力を表示
+            actual_output_widget = test_case["actual_output_widget"]
+            result_frame = test_case["result_frame"]
+
+            # UIスレッドで安全に更新
+            def update_ui():
+                # 出力結果を表示
+                actual_output_widget.config(state="normal")  # 編集可能に
+                actual_output_widget.delete("1.0", tk.END)
+                actual_output_widget.insert(tk.END, result["output"])
+
+                # 結果を比較
+                passed = compare_outputs(result["output"], expected_output)
+
+                # 結果ラベルを更新
+                result_frame.set_result(passed)
+
+                # エラーがあれば表示
+                if result["error"]:
+                    actual_output_widget.insert(
+                        tk.END, f"\n\n--- エラー出力 ---\n{result['error']}"
+                    )
+
+            # UIスレッドで更新
+            self.app_controller.root.after(0, update_ui)
+
+            # 大文字小文字を区別せずに比較
+            passed = compare_outputs(result["output"], expected_output)
+
+            # 処理が完了するまで少し待機して、UIの更新が反映されるようにする
+            time.sleep(0.1)
+
+            return passed
+
+        except Exception as e:
+            # エラーメッセージを表示
+            def show_error():
+                test_case["actual_output_widget"].config(state="normal")
+                test_case["actual_output_widget"].delete("1.0", tk.END)
+                test_case["actual_output_widget"].insert(
+                    tk.END, f"エラーが発生しました: {str(e)}"
+                )
+                test_case["result_frame"].result_icon.config(
+                    text=ICON_WARNING, style="Warning.TLabel"
+                )
+                test_case["result_frame"].result_label.config(
+                    text="エラー", style="Error.TLabel"
+                )
 
             self.app_controller.root.after(0, show_error)
             return False

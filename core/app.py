@@ -23,6 +23,9 @@ class AtCoderTestTool:
         self.problem_id = ""
         self.problem_title = ""
 
+        # 問題管理
+        self.problems = {}  # problem_id -> problem_info
+
         # テーマの設定
         self.theme_manager = ThemeManager(root)
 
@@ -38,7 +41,7 @@ class AtCoderTestTool:
         self.file_monitor = FileMonitor("", self.code_manager.reload_code_file)
         self.file_monitor.start()
 
-        # クリップボード監視を開始（追加）
+        # クリップボード監視を開始
         self.clipboard_monitor = ClipboardMonitor(self)
         self.clipboard_monitor.start()
 
@@ -70,11 +73,34 @@ class AtCoderTestTool:
     def on_tab_changed(self, event):
         """タブ変更時のイベントハンドラ"""
         current_tab = self.ui.notebook.index(self.ui.notebook.select())
-        if current_tab == 1:  # テストケースタブ
+
+        # HTML入力タブの場合
+        if current_tab == 0:
+            html_content = self.ui.html_text.get("1.0", tk.END).strip()
+            if not html_content or len(html_content) < 100:
+                # 内容が不十分なら何もしない
+                pass
+        # テストケースタブの場合
+        elif current_tab == 1:
             html_content = self.ui.html_text.get("1.0", tk.END).strip()
             if not html_content or len(html_content) < 100:  # 内容が不十分
                 self.ui.notebook.select(0)  # HTML入力タブに戻る
                 self.ui.show_status_message("HTMLを入力してください", "Warning.TLabel")
+        # 問題タブの場合
+        else:
+            # 現在のタブに関連するコードファイルを更新
+            tab_info = self.ui.get_current_tab_info()
+            if tab_info and "problem_id" in tab_info:
+                problem_id = tab_info["problem_id"]
+                if problem_id in self.problems:
+                    problem_info = self.problems[problem_id]
+                    # コードファイルパスを更新
+                    self.code_manager.update_code_file_path(
+                        problem_info["contest_number"], problem_info["problem_id"]
+                    )
+                    # ファイル監視を更新
+                    if self.code_manager.code_file:
+                        self.file_monitor.update_file_path(self.code_manager.code_file)
 
     # 操作メソッド
     def start_parsing(self):
@@ -88,6 +114,10 @@ class AtCoderTestTool:
         self.problem_id = problem_info["problem_id"]
         self.problem_title = problem_info["problem_title"]
         self.contest_number = problem_info["contest_number"]
+
+        # 問題をコレクションに追加
+        problem_id = problem_info["problem_id"]
+        self.problems[problem_id] = problem_info
 
         # 問題情報の表示を更新
         if self.contest_number and self.problem_id and self.problem_title:
@@ -108,12 +138,59 @@ class AtCoderTestTool:
                 # ファイル監視の更新
                 self.file_monitor.update_file_path(code_file)
 
-        # テストケースの更新
+        # 問題タブの作成または更新
+        if problem_id and self.problem_title and self.contest_number:
+            self.ui.create_problem_tab(
+                problem_id,
+                self.problem_title,
+                self.contest_number,
+                problem_info["test_cases"],
+            )
+
+        # テストケースの更新（従来のテストケースタブ用）
         self.test_runner.update_test_cases(problem_info["test_cases"])
 
     def run_all_tests(self):
         """すべてのテストケースを実行"""
-        self.test_runner.run_all_tests()
+        # 現在のタブをチェック
+        current_tab = self.ui.notebook.index("current")
+
+        # HTML入力タブかテストケースタブの場合は従来の動作
+        if current_tab < 2:
+            self.test_runner.run_all_tests()
+            return
+
+        # 問題タブの場合は、そのタブのテストのみ実行
+        tab_info = self.ui.get_current_tab_info()
+        if tab_info and "problem_id" in tab_info:
+            self.run_tests_for_problem(tab_info["problem_id"])
+
+    def run_tests_for_problem(self, problem_id):
+        """指定された問題のテストケースを実行"""
+        if problem_id not in self.problems:
+            self.ui.show_status_message(
+                f"問題IDが見つかりません: {problem_id}", "Warning.TLabel"
+            )
+            return
+
+        # タブ情報を取得
+        tab_info = self.ui.get_problem_tab_info(problem_id)
+        if not tab_info:
+            self.ui.show_status_message(
+                f"テストケース情報が見つかりません", "Warning.TLabel"
+            )
+            return
+
+        # コードファイルの確認
+        code_file = self.code_manager.code_file
+        if not code_file or not os.path.exists(code_file):
+            self.ui.show_status_message(
+                "Pythonファイルが存在しません", "Warning.TLabel"
+            )
+            return
+
+        # テストケースを実行
+        self.test_runner.run_tests_for_tab(tab_info)
 
     def generate_single_file(self):
         """ファイルを生成"""
