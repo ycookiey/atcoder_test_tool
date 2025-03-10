@@ -23,7 +23,8 @@ class MainWindow:
         # 初期タブをHTML入力タブに設定
         self.notebook.select(0)
         self.enable_testcase_tab(False)
-        # MainWindowクラスの__init__メソッド内に以下を追加
+
+        # メニューバーの設定
         menubar = tk.Menu(root)
         editmenu = tk.Menu(menubar, tearoff=0)
         editmenu.add_command(
@@ -32,13 +33,31 @@ class MainWindow:
             accelerator="Ctrl+C",
         )
         menubar.add_cascade(label="編集", menu=editmenu)
+
+        # 表示メニューを追加
+        viewmenu = tk.Menu(menubar, tearoff=0)
+        viewmenu.add_command(
+            label="次のタブ",
+            command=self._next_tab,
+            accelerator="Ctrl+Tab",
+        )
+        viewmenu.add_command(
+            label="前のタブ",
+            command=self._prev_tab,
+            accelerator="Ctrl+Shift+Tab",
+        )
+        menubar.add_cascade(label="表示", menu=viewmenu)
+
         root.config(menu=menubar)
 
-        # rootレベルでバインド
+        # キーボードショートカットの設定
         root.bind(
             "<Control-c>",
             lambda e: self.app_controller.code_manager.copy_without_comments(),
         )
+
+        # タブ切り替えショートカットの設定
+        self._setup_keyboard_shortcuts()
 
     def _create_header(self):
         """ヘッダーエリアを作成"""
@@ -234,3 +253,59 @@ class MainWindow:
             self.notebook.tab(1, state="normal")
         else:
             self.notebook.tab(1, state="disabled")
+
+    def _setup_keyboard_shortcuts(self):
+        """キーボードショートカットを設定"""
+        # Ctrl+Tab で次のタブへ
+        self.root.bind("<Control-Tab>", self._next_tab)
+
+        # Ctrl+Shift+Tab で前のタブへ
+        self.root.bind("<Control-Shift-Tab>", self._prev_tab)
+
+    def _next_tab(self, event=None):
+        """次のタブに切り替え"""
+        current = self.notebook.index("current")
+        tabs = self.notebook.tabs()
+
+        # 有効なタブのみを対象にする
+        enabled_tabs = [
+            tab for tab in tabs if self.notebook.tab(tab, "state") != "disabled"
+        ]
+        if not enabled_tabs:
+            return
+
+        # 現在のタブの位置を探す
+        try:
+            current_idx = enabled_tabs.index(tabs[current])
+            next_idx = (current_idx + 1) % len(enabled_tabs)
+            self.notebook.select(enabled_tabs[next_idx])
+        except (ValueError, IndexError):
+            # エラーが発生した場合は最初のタブを選択
+            if enabled_tabs:
+                self.notebook.select(enabled_tabs[0])
+
+        return "break"  # イベントの伝播を停止
+
+    def _prev_tab(self, event=None):
+        """前のタブに切り替え"""
+        current = self.notebook.index("current")
+        tabs = self.notebook.tabs()
+
+        # 有効なタブのみを対象にする
+        enabled_tabs = [
+            tab for tab in tabs if self.notebook.tab(tab, "state") != "disabled"
+        ]
+        if not enabled_tabs:
+            return
+
+        # 現在のタブの位置を探す
+        try:
+            current_idx = enabled_tabs.index(tabs[current])
+            prev_idx = (current_idx - 1) % len(enabled_tabs)
+            self.notebook.select(enabled_tabs[prev_idx])
+        except (ValueError, IndexError):
+            # エラーが発生した場合は最後のタブを選択
+            if enabled_tabs:
+                self.notebook.select(enabled_tabs[-1])
+
+        return "break"  # イベントの伝播を停止
