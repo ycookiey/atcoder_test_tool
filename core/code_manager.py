@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 import subprocess
+import re
 
 
 class CodeManager:
@@ -139,4 +140,55 @@ A = [LI() for _ in range(N)]
         except Exception as e:
             self.app_controller.ui.show_status_message(
                 f"VSCodeでの開始に失敗しました: {str(e)}", "Error.TLabel"
+            )
+
+    def strip_comments(self, code):
+        """Pythonコードからコメントを削除する"""
+        lines = []
+        for line in code.split("\n"):
+            # 行が完全なコメント行かチェック
+            if re.match(r"^\s*#", line):
+                continue
+
+            # 行からインラインコメントを削除
+            commented_line = re.sub(r"#.*$", "", line)
+            lines.append(commented_line.rstrip())
+
+        # 空行を調整
+        result = []
+        prev_empty = False
+        for line in lines:
+            is_empty = not line.strip()
+            if not (is_empty and prev_empty):
+                result.append(line)
+            prev_empty = is_empty
+
+        return "\n".join(result).strip()
+
+    def copy_without_comments(self):
+        """コメントを除いたコードをクリップボードにコピー"""
+        if not self.code_file or not os.path.exists(self.code_file):
+            self.app_controller.ui.show_status_message(
+                "コピーするコードがありません", "Warning.TLabel"
+            )
+            return
+
+        try:
+            with open(self.code_file, "r", encoding="utf-8") as f:
+                code = f.read()
+
+            # コメントを除去
+            clean_code = self.strip_comments(code)
+
+            # クリップボードにコピー
+            self.app_controller.root.clipboard_clear()
+            self.app_controller.root.clipboard_append(clean_code)
+
+            self.app_controller.ui.show_status_message(
+                "コメントを除いたコードをクリップボードにコピーしました",
+                "Success.TLabel",
+            )
+        except Exception as e:
+            self.app_controller.ui.show_status_message(
+                f"コードのコピーに失敗しました: {str(e)}", "Error.TLabel"
             )

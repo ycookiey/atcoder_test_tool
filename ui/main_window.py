@@ -141,6 +141,15 @@ class MainWindow:
         )
         vscode_btn.pack(side=tk.LEFT, padx=5)
 
+        # コメント除去してコピーするボタンを追加
+        copy_clean_btn = ttk.Button(
+            button_frame,
+            text="コピー",
+            command=lambda: self.app_controller.code_manager.copy_without_comments(),
+            style="Primary.TButton",
+        )
+        copy_clean_btn.pack(side=tk.LEFT, padx=5)
+
         run_all_btn = ttk.Button(
             button_frame,
             text="全テストケース実行",
