@@ -23,6 +23,22 @@ class MainWindow:
         # 初期タブをHTML入力タブに設定
         self.notebook.select(0)
         self.enable_testcase_tab(False)
+        # MainWindowクラスの__init__メソッド内に以下を追加
+        menubar = tk.Menu(root)
+        editmenu = tk.Menu(menubar, tearoff=0)
+        editmenu.add_command(
+            label="コピー(コメント除去) Ctrl+C",
+            command=lambda: self.app_controller.code_manager.copy_without_comments(),
+            accelerator="Ctrl+C",
+        )
+        menubar.add_cascade(label="編集", menu=editmenu)
+        root.config(menu=menubar)
+
+        # rootレベルでバインド
+        root.bind(
+            "<Control-c>",
+            lambda e: self.app_controller.code_manager.copy_without_comments(),
+        )
 
     def _create_header(self):
         """ヘッダーエリアを作成"""
