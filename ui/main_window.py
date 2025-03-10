@@ -52,6 +52,15 @@ class MainWindow:
         )
         menubar.add_cascade(label="表示", menu=viewmenu)
 
+        # 実行メニューを追加
+        runmenu = tk.Menu(menubar, tearoff=0)
+        runmenu.add_command(
+            label="テスト実行",
+            command=self.app_controller.run_all_tests,
+            accelerator="F5",
+        )
+        menubar.add_cascade(label="実行", menu=runmenu)
+
         root.config(menu=menubar)
 
         # キーボードショートカットの設定
@@ -59,6 +68,9 @@ class MainWindow:
             "<Control-c>",
             lambda e: self.app_controller.code_manager.copy_without_comments(),
         )
+
+        # テスト実行のショートカットキー（F5）を設定
+        root.bind("<F5>", lambda e: self.app_controller.run_all_tests())
 
         # タブ切り替えショートカットの設定
         self._setup_keyboard_shortcuts()
@@ -191,7 +203,7 @@ class MainWindow:
 
         run_all_btn = ttk.Button(
             button_frame,
-            text="全テストケース実行",
+            text="全テストケース実行 (F5)",
             command=self.app_controller.run_all_tests,
             style="Primary.TButton",
         )
@@ -301,7 +313,7 @@ class MainWindow:
         # このタブのテストケースのみ実行するボタン
         run_btn = ttk.Button(
             button_frame,
-            text="テスト実行",
+            text="テスト実行 (F5)",
             command=lambda pid=problem_id: self.app_controller.run_tests_for_problem(
                 pid
             ),
