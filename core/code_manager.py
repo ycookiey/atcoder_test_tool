@@ -119,6 +119,10 @@ A = [LI() for _ in range(N)]
             self.app_controller.ui.show_status_message(
                 f"ファイルを生成しました: {self.code_file}", "Success.TLabel"
             )
+
+            # ファイル生成後、自動的にVSCodeで開く
+            self.open_in_vscode()
+
         except Exception as e:
             self.app_controller.ui.show_status_message(
                 f"ファイルの生成に失敗しました: {str(e)}", "Error.TLabel"
