@@ -7,6 +7,7 @@ from core.html_manager import HTMLManager
 from core.test_runner import TestRunner
 from core.code_manager import CodeManager
 from core.file_monitor import FileMonitor
+from core.clipboard_monitor import ClipboardMonitor
 
 
 class AtCoderTestTool:
@@ -36,6 +37,10 @@ class AtCoderTestTool:
         # ファイル監視を開始
         self.file_monitor = FileMonitor("", self.code_manager.reload_code_file)
         self.file_monitor.start()
+
+        # クリップボード監視を開始（追加）
+        self.clipboard_monitor = ClipboardMonitor(self)
+        self.clipboard_monitor.start()
 
     # イベントハンドラ
     def paste_from_clipboard(self):
@@ -113,3 +118,15 @@ class AtCoderTestTool:
     def generate_single_file(self):
         """ファイルを生成"""
         self.code_manager.generate_file()
+
+    def on_closing(self):
+        """アプリケーション終了時の処理"""
+        # 各監視スレッドを停止
+        if hasattr(self, "file_monitor"):
+            self.file_monitor.stop()
+
+        if hasattr(self, "clipboard_monitor"):
+            self.clipboard_monitor.stop()
+
+        # ウィンドウを閉じる
+        self.root.destroy()
