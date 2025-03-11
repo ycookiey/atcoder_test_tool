@@ -45,6 +45,20 @@ class AtCoderTestTool:
         self.clipboard_monitor = ClipboardMonitor(self)
         self.clipboard_monitor.start()
 
+    def activate_window(self):
+        """アプリケーションウィンドウをアクティブにする"""
+        self.root.attributes("-topmost", True)  # 一時的に最前面に
+        self.root.update()
+        self.root.deiconify()  # 最小化されていたら元に戻す
+        self.root.focus_force()  # 強制的にフォーカス
+        self.root.lift()  # 他のウィンドウより前に
+        self.root.attributes("-topmost", False)  # 最前面設定を元に戻す
+
+        # ステータスメッセージ
+        self.ui.show_status_message(
+            "ウィンドウをアクティブにしました", "Success.TLabel"
+        )
+
     # イベントハンドラ
     def paste_from_clipboard(self):
         """クリップボードの内容をHTML入力欄に貼り付け"""

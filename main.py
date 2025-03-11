@@ -9,6 +9,16 @@ def main():
     # ウィンドウ閉じる時のイベントを設定
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
 
+    # グローバルホットキーの設定
+    import keyboard
+
+    def activate_window_handler():
+        # Tkinterのメインスレッドで実行
+        root.after(0, app.activate_window)
+
+    # Ctrl+Shift+Hのホットキー設定
+    keyboard.add_hotkey("ctrl+shift+h", activate_window_handler)
+
     root.mainloop()
 
 
