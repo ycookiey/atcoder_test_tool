@@ -15,7 +15,7 @@ class CodeManager:
     def update_code_file_path(self, contest_number, problem_id):
         """コードファイルのパスを更新"""
         if contest_number and problem_id:
-            self.code_file = f"../{contest_number}{problem_id}.py"
+            self.code_file = f"{contest_number}{problem_id}.py"
             return self.code_file
         return None
 
