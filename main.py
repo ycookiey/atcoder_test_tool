@@ -16,8 +16,8 @@ def main():
         # Tkinterのメインスレッドで実行
         root.after(0, app.activate_window)
 
-    # Ctrl+Shift+Hのホットキー設定
-    keyboard.add_hotkey("ctrl+shift+h", activate_window_handler)
+    # Alt+Hのホットキー設定
+    keyboard.add_hotkey("alt+h", activate_window_handler)
 
     root.mainloop()
 
