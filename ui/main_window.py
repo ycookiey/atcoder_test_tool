@@ -87,6 +87,12 @@ class MainWindow:
         )
         self.info_label.pack(side=tk.LEFT, padx=10, pady=5)
 
+        # 中央に入力解析ステータスを表示
+        self.input_analysis_label = ttk.Label(
+            header_frame, text="", style="Status.TLabel"
+        )
+        self.input_analysis_label.pack(side=tk.LEFT, padx=(20, 0), pady=5)
+
         # ステータスメッセージ
         self.status_label = ttk.Label(header_frame, text="", style="Status.TLabel")
         self.status_label.pack(side=tk.RIGHT, padx=10, pady=5)
@@ -366,6 +372,10 @@ class MainWindow:
         # テストケースを表示
         self.update_problem_tab_test_cases(problem_id, test_cases)
 
+        # コードフレームを更新（ファイル生成ボタンを表示）
+        tab_info = self.tab_test_frames[tab_index]
+        self.app_controller.code_manager.update_problem_tab_code(tab_info, code_file)
+
         # 新しいタブを選択
         self.notebook.select(tab_index)
 
@@ -493,6 +503,10 @@ class MainWindow:
         self.status_label.config(text=message, style=style)
         # 一定時間後にメッセージをクリア
         self.root.after(duration, lambda: self.status_label.config(text=""))
+
+    def update_input_analysis_status(self, status_text):
+        """入力解析のステータス表示を更新"""
+        self.input_analysis_label.config(text=status_text)
 
     def enable_testcase_tab(self, enable=True):
         """テストケースタブの有効/無効を切り替え"""

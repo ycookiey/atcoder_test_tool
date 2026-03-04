@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import re
+from .input_analysis.models.sample import Sample
 
 
 def parse_problem_html(html_content):
@@ -13,6 +14,8 @@ def parse_problem_html(html_content):
         "problem_title": "",
         "contest_number": "",
         "test_cases": [],
+        "input_format": "",  # 入力形式を追加
+        "samples": [],       # Sample オブジェクトのリストを追加
     }
 
     # 問題情報の取得
@@ -33,6 +36,30 @@ def parse_problem_html(html_content):
             contest_id = match.group(1)
             if contest_id.startswith("abc"):
                 problem_info["contest_number"] = contest_id[3:]  # 'abc395' -> '395'
+
+    # 入力形式の抽出
+    for section in soup.select("div.part"):
+        section_title = section.select_one("h3")
+        if section_title:
+            title_text = section_title.get_text().strip()
+
+            if "入力" in title_text and "例" not in title_text:  # "入力例"を除外
+                pre_tag = section.select_one("pre")
+                if pre_tag:
+                    # KaTeXの数式が含まれている場合はannotationから抽出
+                    katex_annotations = pre_tag.select("annotation[encoding='application/x-tex']")
+                    if katex_annotations:
+                        # 複数のannotationがある場合は結合
+                        input_format_parts = []
+                        for annotation in katex_annotations:
+                            input_format_parts.append(annotation.get_text().strip())
+                        input_format_text = " ".join(input_format_parts)
+                    else:
+                        # 通常のテキスト
+                        input_format_text = pre_tag.get_text().strip()
+
+                    problem_info["input_format"] = input_format_text
+                    break
 
     # 入力例と出力例の抽出
     sample_sections = soup.select("div.part")
@@ -72,5 +99,10 @@ def parse_problem_html(html_content):
                 "expected_output": output_samples[i][1],
             }
         )
+
+    # Sample オブジェクトのリストを作成
+    for i in range(min(len(input_samples), len(output_samples))):
+        sample = Sample(input_samples[i][1], output_samples[i][1])
+        problem_info["samples"].append(sample)
 
     return problem_info

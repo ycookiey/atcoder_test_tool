@@ -133,6 +133,9 @@ class AtCoderTestTool:
         problem_id = problem_info["problem_id"]
         self.problems[problem_id] = problem_info
 
+        # CodeManager に問題情報を設定
+        self.code_manager.set_current_problem_info(problem_info)
+
         # 問題情報の表示を更新
         if self.contest_number and self.problem_id and self.problem_title:
             info_text = (
@@ -163,6 +166,10 @@ class AtCoderTestTool:
 
         # テストケースの更新（従来のテストケースタブ用）
         self.test_runner.update_test_cases(problem_info["test_cases"])
+
+        # 入力解析ステータスを更新
+        status_message = self.code_manager.get_input_analysis_status()
+        self.ui.update_input_analysis_status(status_message)
 
     def run_all_tests(self):
         """すべてのテストケースを実行"""

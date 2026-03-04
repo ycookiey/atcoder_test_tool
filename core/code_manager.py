@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 import subprocess
 import re
+from .input_analysis.input_analyzer import InputAnalyzer
 
 
 class CodeManager:
@@ -11,6 +12,8 @@ class CodeManager:
     def __init__(self, app_controller):
         self.app_controller = app_controller
         self.code_file = ""
+        self.input_analyzer = InputAnalyzer()  # 入力解析機能を追加
+        self.current_problem_info = None  # 現在の問題情報
 
     def update_code_file_path(self, contest_number, problem_id):
         """コードファイルのパスを更新"""
@@ -18,6 +21,10 @@ class CodeManager:
             self.code_file = f"{contest_number}{problem_id}.py"
             return self.code_file
         return None
+
+    def set_current_problem_info(self, problem_info):
+        """現在の問題情報を設定"""
+        self.current_problem_info = problem_info
 
     def update_code_frame(self, title):
         """コード表示用フレームを更新"""
@@ -79,6 +86,14 @@ class CodeManager:
         code_frame = tab_info["code_frame"]
         code_text = tab_info["code_text"]
 
+        # ウィジェットが存在しているかチェック
+        try:
+            code_frame.winfo_exists()
+            code_text.winfo_exists()
+        except tk.TclError:
+            # ウィジェットが削除されている場合は何もしない
+            return
+
         # タイトルが指定されていれば更新
         if title:
             code_frame.configure(text=title)
@@ -114,15 +129,23 @@ class CodeManager:
                 with open(self.code_file, "r", encoding="utf-8") as f:
                     code = f.read()
 
+                # ウィジェットがまだ存在するかチェック
                 code_text.config(state="normal")
                 code_text.delete("1.0", tk.END)
                 code_text.insert(tk.END, code)
                 code_text.config(state="disabled")
+            except tk.TclError:
+                # ウィジェットが削除されている場合は何もしない
+                pass
             except Exception as e:
-                code_text.config(state="normal")
-                code_text.delete("1.0", tk.END)
-                code_text.insert(tk.END, f"ファイルの読み込みに失敗: {str(e)}")
-                code_text.config(state="disabled")
+                try:
+                    code_text.config(state="normal")
+                    code_text.delete("1.0", tk.END)
+                    code_text.insert(tk.END, f"ファイルの読み込みに失敗: {str(e)}")
+                    code_text.config(state="disabled")
+                except tk.TclError:
+                    # ウィジェットが削除されている場合は何もしない
+                    pass
 
     def reload_code_file(self):
         """コードファイルを再読み込みして表示を更新"""
@@ -149,32 +172,61 @@ class CodeManager:
         """コードテキストエリアを更新"""
         ui = self.app_controller.ui
         if hasattr(ui, "code_text"):
-            ui.code_text.config(state="normal")
-            ui.code_text.delete("1.0", tk.END)
-            ui.code_text.insert(tk.END, code)
-            ui.code_text.config(state="disabled")
+            try:
+                ui.code_text.config(state="normal")
+                ui.code_text.delete("1.0", tk.END)
+                ui.code_text.insert(tk.END, code)
+                ui.code_text.config(state="disabled")
+            except tk.TclError:
+                # ウィジェットが削除されている場合は何もしない
+                pass
 
-    def generate_code_template(self):
-        """コードテンプレートを生成"""
-        template = """import bisect,collections,copy,heapq,itertools,math,numpy,string
+    def generate_code_template(self, problem_info=None):
+        """コードテンプレートを生成（入力解析結果があれば適用）"""
+
+        # 基本テンプレート
+        base_template = """import bisect,collections,copy,heapq,itertools,math,numpy,string
 import sys
 def I(): return int(sys.stdin.readline().rstrip())
 def LI(): return list(map(int,sys.stdin.readline().rstrip().split()))
 def S(): return sys.stdin.readline().rstrip()
 def LS(): return list(sys.stdin.readline().rstrip().split())
-N = I()
-A = [LI() for _ in range(N)]
 
 """
-        return template
 
-    def generate_file(self):
-        """コードファイルを生成"""
+        # 入力解析を試行
+        if problem_info and "input_format" in problem_info and "samples" in problem_info:
+            input_format = problem_info["input_format"]
+            samples = problem_info["samples"]
+
+            if input_format and samples:
+                # 入力形式を解析
+                prediction_result = self.input_analyzer.analyze_input_format(input_format, samples)
+
+                if prediction_result:
+                    # 自動生成されたコードを使用
+                    generated_code = self.input_analyzer.generate_python_code(prediction_result)
+                    return base_template + generated_code
+
+        # 解析失敗時は従来のテンプレート
+        fallback_input = """N = I()
+A = [LI() for _ in range(N)]
+
+# TODO: 問題解決のロジックを実装"""
+
+        return base_template + fallback_input
+
+    def generate_file(self, problem_info=None):
+        """コードファイルを生成（問題情報があれば入力解析を実行）"""
         if not self.code_file:
             return
 
-        # テンプレートコードを取得
-        template = self.generate_code_template()
+        # 問題情報が渡されていない場合は、現在の問題情報を使用
+        if problem_info is None:
+            problem_info = self.current_problem_info
+
+        # テンプレートコードを取得（問題情報を渡す）
+        template = self.generate_code_template(problem_info)
 
         try:
             # ファイルに保存
@@ -273,3 +325,7 @@ A = [LI() for _ in range(N)]
             self.app_controller.ui.show_status_message(
                 f"コードのコピーに失敗しました: {str(e)}", "Error.TLabel"
             )
+
+    def get_input_analysis_status(self):
+        """入力解析のステータスメッセージを取得"""
+        return self.input_analyzer.get_analysis_status_message()

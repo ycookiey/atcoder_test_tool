@@ -7,7 +7,17 @@ echo AtCoder Test Tool starting...
 REM 仮想環境のディレクトリ名
 set VENV_DIR=venv
 
-REM 仮想環境が存在するかチェック
+REM 仮想環境が存在する場合、まず検証
+if exist "%VENV_DIR%" (
+    REM 仮想環境のPythonが実行可能かテスト
+    "%VENV_DIR%\Scripts\python.exe" --version >nul 2>&1
+    if errorlevel 1 (
+        echo Virtual environment is corrupted or outdated. Removing...
+        rmdir /s /q "%VENV_DIR%"
+    )
+)
+
+REM 仮想環境が存在しない場合は作成
 if not exist "%VENV_DIR%" (
     echo Virtual environment not found. Creating...
     python -m venv %VENV_DIR%
