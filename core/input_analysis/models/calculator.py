@@ -26,16 +26,12 @@ class CalcNode:
         """式を解析してノードを作成"""
         expression = expression.strip()
 
-        # 数値の場合
         if expression.isdigit():
             return CalcNode(value=int(expression))
 
-        # 変数の場合
         if re.match(r'^[a-zA-Z_]\w*$', expression):
             return CalcNode(value=expression)
 
-        # 簡単な四則演算をサポート
-        # より複雑な解析が必要な場合は拡張
         for op in ['+', '-', '*', '/']:
             if op in expression:
                 parts = expression.split(op, 1)
@@ -61,7 +57,7 @@ class CalcNode:
         if self.right:
             variables.extend(self.right.get_all_variables())
 
-        return list(set(variables))  # 重複を除去
+        return list(set(variables))
 
     def evaluate(self, var_dict: Dict[str, Any]) -> Any:
         """式を評価"""
@@ -88,7 +84,7 @@ class CalcNode:
                 elif self.operator == '*':
                     return left_val * right_val
                 elif self.operator == '/':
-                    return left_val // right_val  # 整数除算
+                    return left_val // right_val
 
             raise EvaluateError("Invalid expression")
 

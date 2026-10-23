@@ -5,20 +5,17 @@ from .input_analysis.models.sample import Sample
 
 def parse_problem_html(html_content):
     """HTMLの解析処理"""
-    # HTMLの解析
     soup = BeautifulSoup(html_content, "html.parser")
 
-    # 問題情報の初期化
     problem_info = {
         "problem_id": "",
         "problem_title": "",
         "contest_number": "",
         "test_cases": [],
-        "input_format": "",  # 入力形式を追加
-        "samples": [],       # Sample オブジェクトのリストを追加
+        "input_format": "",
+        "samples": [],
     }
 
-    # 問題情報の取得
     task_title = soup.select_one("span.h2")
     if task_title:
         title_text = task_title.get_text().strip()
@@ -27,7 +24,6 @@ def parse_problem_html(html_content):
             problem_info["problem_id"] = match.group(1)
             problem_info["problem_title"] = match.group(2)
 
-    # コンテスト番号の取得
     contest_url = soup.select_one('a[href^="/contests/"]')
     if contest_url:
         href = contest_url.get("href", "")
@@ -37,7 +33,6 @@ def parse_problem_html(html_content):
             if contest_id.startswith("abc"):
                 problem_info["contest_number"] = contest_id[3:]  # 'abc395' -> '395'
 
-    # 入力形式の抽出
     for section in soup.select("div.part"):
         section_title = section.select_one("h3")
         if section_title:
@@ -46,22 +41,19 @@ def parse_problem_html(html_content):
             if "入力" in title_text and "例" not in title_text:  # "入力例"を除外
                 pre_tag = section.select_one("pre")
                 if pre_tag:
-                    # KaTeXの数式が含まれている場合はannotationから抽出
+                    # KaTeXで描画した数式は、annotationに元のTeXの式が入っている
                     katex_annotations = pre_tag.select("annotation[encoding='application/x-tex']")
                     if katex_annotations:
-                        # 複数のannotationがある場合は結合
                         input_format_parts = []
                         for annotation in katex_annotations:
                             input_format_parts.append(annotation.get_text().strip())
                         input_format_text = " ".join(input_format_parts)
                     else:
-                        # 通常のテキスト
                         input_format_text = pre_tag.get_text().strip()
 
                     problem_info["input_format"] = input_format_text
                     break
 
-    # 入力例と出力例の抽出
     sample_sections = soup.select("div.part")
 
     input_samples = []
@@ -85,9 +77,8 @@ def parse_problem_html(html_content):
         elif "出力例" in title_text:
             output_samples.append((title_text, sample_text))
 
-    # テストケースとして保存
     for i in range(min(len(input_samples), len(output_samples))):
-        # Copyを削除したラベル
+        # h3にはコピーのボタンの文字Copyが入っている
         input_title = input_samples[i][0].replace("Copy", "").strip()
         output_title = output_samples[i][0].replace("Copy", "").strip()
 
@@ -100,7 +91,6 @@ def parse_problem_html(html_content):
             }
         )
 
-    # Sample オブジェクトのリストを作成
     for i in range(min(len(input_samples), len(output_samples))):
         sample = Sample(input_samples[i][1], output_samples[i][1])
         problem_info["samples"].append(sample)

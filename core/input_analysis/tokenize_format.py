@@ -115,9 +115,9 @@ class FormatSearcher:
     @staticmethod
     def _possible_var_tokens(token: str, current_var_to_dim_num: Dict[str, int]) -> List[VariableToken]:
         """
-        Only considers to divide the given token into at most 3 pieces (that is, to assume at most 2 dimensional indexes).
-        :param token: e.g. "N", "abc_1_2" or "a_1 ... a_N"
-        :param current_var_to_dim_num: utilized to detect unknown variables (for pruning purpose)
+        トークンを最大3つに分ける候補だけを作る。添字は2次元までと仮定する。
+        :param token: 例: "N"、"abc_1_2"、"a_1 ... a_N"
+        :param current_var_to_dim_num: 未知の変数を含む候補を探索から外すために使う
         """
         var_token_candidates = [VariableToken(token, None, None)]
         var_token_candidates += [VariableToken(
@@ -130,11 +130,11 @@ class FormatSearcher:
                     VariableToken(token[:i], token[i:j], token[j:])]
 
         def check_if_possible(var_token: VariableToken):
-            # check syntax error
+            # 構文の誤りを検出する
             if not var_token.is_valid():
                 return False
 
-            # check kind of synonym error using current_var_to_dim_num
+            # 添字に、まだ現れていない変数が使われていないかを確かめる
             for index in [var_token.first_index, var_token.second_index]:
                 if index is None:
                     continue
@@ -156,8 +156,7 @@ class FormatSearcher:
 
 def search_formats_with_minimum_vars(input_format: str) -> List[TokenizedFormat]:
     """
-    Fast enough for realistic instances.
-    This method returns possible formats with the smallest number of variables.
+    変数の数が最も少ない入力形式の候補を返す。実際の問題の入力形式なら、探索は十分に速い。
     """
     tokens = _sanitized_tokens(input_format)
     searcher = FormatSearcher(tokens)

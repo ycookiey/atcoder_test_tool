@@ -12,10 +12,8 @@ class ThemeManager:
 
     def setup_theme(self):
         """ダークテーマのスタイルを設定"""
-        # ウィンドウの背景色を設定
         self.root.configure(bg=COLOR_BG_DARK)
 
-        # TFrame設定
         self.style.configure("TFrame", background=COLOR_BG_DARK)
         self.style.configure("Dark.TFrame", background=COLOR_BG_DARK)
         self.style.configure("Medium.TFrame", background=COLOR_BG_MEDIUM)
@@ -24,7 +22,6 @@ class ThemeManager:
             "Highlight.TFrame", background=COLOR_PRIMARY, borderwidth=2
         )
 
-        # TLabelframe設定
         self.style.configure(
             "TLabelframe", background=COLOR_BG_MEDIUM, foreground=COLOR_FG
         )
@@ -35,7 +32,6 @@ class ThemeManager:
             font=("Arial", 10, "bold"),
         )
 
-        # TLabel設定
         self.style.configure("TLabel", background=COLOR_BG_MEDIUM, foreground=COLOR_FG)
         self.style.configure(
             "Status.TLabel",
@@ -68,7 +64,6 @@ class ThemeManager:
             "Running.TLabel", background=COLOR_BG_MEDIUM, foreground=COLOR_WARNING
         )
 
-        # TButton設定
         self.style.configure(
             "TButton",
             background=COLOR_BG_MEDIUM,
@@ -83,7 +78,6 @@ class ThemeManager:
             foreground=[("active", COLOR_ACCENT), ("pressed", COLOR_PRIMARY)],
         )
 
-        # Primary.TButton設定（強調ボタン）
         self.style.configure(
             "Primary.TButton",
             background=COLOR_PRIMARY,
@@ -98,13 +92,10 @@ class ThemeManager:
             foreground=[("active", COLOR_BG_DARK), ("pressed", COLOR_ACCENT)],
         )
 
-        # Icon.TButton設定（アイコンボタン）
         self.style.configure("Icon.TButton", padding=3, font=("Arial", 12))
 
-        # TPanedwindow設定
         self.style.configure("TPanedwindow", background=COLOR_BG_DARK)
 
-        # TNotebook設定
         self.style.configure("TNotebook", background=COLOR_BG_DARK, borderwidth=0)
         self.style.configure(
             "TNotebook.Tab",
@@ -118,7 +109,6 @@ class ThemeManager:
             foreground=[("selected", COLOR_BG_DARK), ("disabled", COLOR_BG_DARK)],
         )
 
-        # スクロールバー設定
         self.style.configure(
             "Vertical.TScrollbar",
             background=COLOR_BG_LIGHT,
@@ -130,7 +120,6 @@ class ThemeManager:
             background=[("active", COLOR_PRIMARY), ("disabled", COLOR_DISABLED)],
         )
 
-        # TProgressbar設定
         self.style.configure(
             "TProgressbar",
             troughcolor=COLOR_BG_MEDIUM,

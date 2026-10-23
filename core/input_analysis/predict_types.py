@@ -71,7 +71,7 @@ class TypePredictor:
         self._fmt = fmt
         self._fetch_generator_instance = self._fetch_generator()
         self._var_to_type = {}  # type: Dict[str, Type]
-        # If there are multiple values, only the first value is recorded.
+        # 同じ変数に複数の値があるときは、最初の値だけを記録する
         self._var_to_actual_value = {}
 
     def get_typing_result(self):
