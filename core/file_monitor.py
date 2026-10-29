@@ -50,4 +50,4 @@ class FileMonitor:
     def update_file_path(self, new_path):
         """監視するファイルを変更"""
         self.file_path = new_path
-        self.last_modified_time = 0  # リセット
+        self.last_modified_time = 0

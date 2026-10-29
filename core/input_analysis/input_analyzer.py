@@ -26,17 +26,14 @@ class InputAnalyzer:
             予測結果（失敗時はNone）
         """
         try:
-            # 常に解析を許可
             result = predict_format(input_format_text, samples, is_format_analysis_allowed_by_rule=True)
             self.last_prediction_result = result
             return result
 
         except (NoPredictionResultError, MultiplePredictionResultsError, PredictionNotAllowedError):
-            # 解析失敗時は静かに None を返す
             self.last_prediction_result = None
             return None
         except Exception:
-            # その他のエラーも静かに処理
             self.last_prediction_result = None
             return None
 
@@ -75,22 +72,18 @@ class InputAnalyzer:
                     code_lines.append(f"{var1.name} = int(input())")
                     code_lines.append(f"{var2.name} = list(map(int, input().split()))")
             else:
-                # 複数変数の場合は基本的なパターンを生成
                 if len(variables) <= 4:
                     var_names = [var.name for var in variables if not var.is_array()]
                     if var_names:
                         code_lines.append(f"{', '.join(var_names)} = map(int, input().split())")
 
-                # 配列変数があれば追加
                 for var in variables:
                     if var.is_array():
                         code_lines.append(f"{var.name} = list(map(int, input().split()))")
 
-            # コードが生成できなかった場合はフォールバック
             if not code_lines:
                 return self._generate_fallback_code()
 
-            # TODO コメントを追加
             code_lines.append("")
             code_lines.append("# TODO: 問題解決のロジックを実装")
 

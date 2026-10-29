@@ -33,12 +33,11 @@ class Type:
         if self.type_enum == other.type_enum:
             return self
 
-        # int と float の場合は float に統一
         if (self.type_enum == TypeEnum.INT and other.type_enum == TypeEnum.FLOAT) or \
            (self.type_enum == TypeEnum.FLOAT and other.type_enum == TypeEnum.INT):
             return Type(TypeEnum.FLOAT)
 
-        # その他の場合は string に統一（安全側）
+        # どの値も表せるstringにそろえる
         return Type(TypeEnum.STRING)
 
     def to_python_type_name(self) -> str:
